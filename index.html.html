@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memoria al Límite — Jerarquía de memoria y almacenamiento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#090d18; --panel:#10172a; --panel2:#162039; --line:#24304f; --text:#e8edff; --muted:#8e9ac0;
+  --t0:#ff5d73; --t1:#ff9f43; --t2:#ffd23f; --t3:#3ee6a0; --t4:#3cc8ff; --t5:#a78bfa;
+  --ok:#3ee6a0; --bad:#ff5d73;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace; --sans:'Space Grotesk',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;
+  background-image:radial-gradient(circle at 1px 1px,#18213d 1px,transparent 0);background-size:22px 22px;}
+button{font:inherit;color:inherit}
+a{color:inherit}
+b,strong{font-weight:700}
+code,.mono{font-family:var(--mono)}
+
+/* ---------- Header ---------- */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 20px;
+  background:rgba(9,13,24,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand .ico{width:34px;height:34px;border-radius:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:5px;background:#141c33;border:1px solid var(--line)}
+.brand .ico i{border-radius:2px;background:var(--t3)}
+.brand .ico i:nth-child(2n){background:var(--t4)} .brand .ico i:nth-child(3n){background:var(--t0)}
+.brand b{font-family:var(--mono);letter-spacing:.1em;font-size:14px;display:block}
+.brand small{color:var(--muted);font-size:11.5px}
+.teams{display:flex;gap:10px;flex:1;flex-wrap:wrap;justify-content:center;padding-top:6px}
+.team{position:relative;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  padding:6px 14px 6px 10px;font-size:14px;cursor:pointer;transition:.2s}
+.team:hover{border-color:var(--c)}
+.team .dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.team .ts{font-family:var(--mono);font-weight:800;color:var(--c);min-width:2ch;text-align:right}
+.team.on{border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 0 22px -6px var(--c);background:color-mix(in srgb,var(--c) 14%,var(--panel))}
+.team .turn{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;letter-spacing:.14em;
+  background:var(--c);color:#0a0d16;padding:1px 7px;border-radius:4px;font-weight:800}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.tbtn{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:13px;padding:7px 11px;border-radius:8px;cursor:pointer;transition:.15s}
+.tbtn:hover{color:var(--text);border-color:var(--muted)}
+.floatpts{position:fixed;z-index:60;font-family:var(--mono);font-weight:800;font-size:24px;pointer-events:none;animation:floatup 1.3s ease-out forwards;text-shadow:0 2px 12px #000}
+@keyframes floatup{from{opacity:1;transform:translate(-50%,0) scale(1.1)}to{opacity:0;transform:translate(-50%,-56px) scale(1)}}
+
+main{max-width:1120px;margin:0 auto;padding:30px 20px 90px}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc,var(--t3))}
+h1{font-size:clamp(30px,4.6vw,52px);line-height:1.04;margin:.28em 0 .32em;letter-spacing:-.025em}
+h1 em{font-style:normal;color:var(--t3)}
+h3{font-size:13px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+h3.mt{margin-top:22px}
+p{line-height:1.55}
+
+/* ---------- Home ---------- */
+.hero{max-width:760px}
+.hero p{color:#c4cceb;font-size:17px}
+.howto{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0 4px}
+.howto div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;color:#c4cceb}
+.howto b{display:block;font-family:var(--mono);color:var(--t2);font-size:12px;letter-spacing:.1em;margin-bottom:4px}
+.axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin:34px 0 8px;letter-spacing:.05em;gap:10px}
+.pyr{display:flex;flex-direction:column;align-items:center;gap:6px}
+.lvl{width:var(--w);clip-path:polygon(var(--in) 0,calc(100% - var(--in)) 0,100% 100%,0 100%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 30%,#101829),color-mix(in srgb,var(--acc) 12%,#0d1424));
+  padding:15px calc(5.4% + 16px);display:flex;align-items:center;gap:16px;text-decoration:none;transition:filter .2s,transform .2s;min-height:88px;position:relative}
+.lvl:hover{filter:brightness(1.25);transform:scale(1.012)}
+.lvl .ln{font-family:var(--mono);font-weight:800;font-size:26px;color:var(--acc);opacity:.9}
+.lvl .lt{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.lvl small{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc)}
+.lvl b{font-size:21px;letter-spacing:-.01em}
+.lvl em{font-style:normal;color:#c4cceb;font-size:14px}
+.lvl .go{font-size:22px;color:var(--acc)}
+.foot{margin-top:40px;color:var(--muted);font-size:13px;text-align:center}
+
+/* ---------- Game frame ---------- */
+.back{display:inline-block;color:var(--muted);text-decoration:none;font-size:14px;margin-bottom:14px}
+.back:hover{color:var(--text)}
+.ghead{max-width:820px;margin-bottom:20px}
+.intro{color:#c4cceb;font-size:16.5px;margin:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+.grid2{display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
+.rule{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border:1px solid color-mix(in srgb,var(--acc) 45%,var(--line));
+  border-radius:12px;background:color-mix(in srgb,var(--acc) 7%,var(--panel))}
+.rule span{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc)}
+.rule code{font-size:15px;font-weight:600}
+.rule em{font-style:normal;color:var(--muted);font-size:13px;margin-left:auto}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer;font-weight:600;font-size:15px;transition:.15s}
+.btn:hover:not(:disabled){border-color:var(--acc,var(--t3));transform:translateY(-1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--acc,var(--t3));border-color:transparent;color:#0a0d16}
+.btn.primary:hover:not(:disabled){filter:brightness(1.1)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tab{background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;color:var(--muted);font-size:14px}
+.tab.on{background:var(--acc);border-color:var(--acc);color:#0a0d16;font-weight:700}
+.feed{margin-top:16px;padding:16px 18px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);line-height:1.6;font-size:15.5px}
+.feed.ok{border-color:color-mix(in srgb,var(--ok) 60%,var(--line));background:color-mix(in srgb,var(--ok) 9%,var(--panel))}
+.feed.bad{border-color:color-mix(in srgb,var(--bad) 60%,var(--line));background:color-mix(in srgb,var(--bad) 9%,var(--panel))}
+.feed .tag{font-family:var(--mono);font-weight:800;letter-spacing:.08em;display:block;margin-bottom:4px}
+.feed.ok .tag{color:var(--ok)} .feed.bad .tag{color:var(--bad)}
+.okc{color:var(--ok)} .badc{color:var(--bad)}
+.key{margin-top:16px;padding:14px 16px;border-left:3px solid var(--acc);background:color-mix(in srgb,var(--acc) 6%,transparent);border-radius:0 10px 10px 0;font-size:14.5px;color:#c4cceb}
+.key b{color:var(--text)}
+.sum{display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 4px}
+.stat{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat b{display:block;font-family:var(--mono);font-size:32px;color:var(--acc)}
+.stat span{color:var(--muted);font-size:13px}
+.prog{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.big{font-family:var(--mono);font-weight:800;font-size:clamp(34px,6vw,56px);color:var(--acc);line-height:1.1;margin:6px 0 14px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;font-size:16px;display:flex;gap:12px;align-items:center;transition:.15s}
+.opt:hover:not(:disabled){border-color:var(--acc);transform:translateY(-1px)}
+.opt .l{font-family:var(--mono);font-weight:800;color:var(--acc);font-size:13px;border:1px solid var(--line);border-radius:6px;padding:2px 7px;flex:none}
+.opt.right{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--panel2))}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--panel2))}
+.opt:disabled{cursor:default}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* ---------- Pirámide ---------- */
+.pyr-game{display:grid;grid-template-columns:300px 1fr;gap:16px}
+.pool{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 14px;text-align:left;cursor:pointer;font-weight:600;transition:.15s}
+.card:hover{border-color:var(--acc);transform:translateX(3px)}
+.hint{color:var(--muted);font-size:13px;margin:10px 0 0}
+.slots{display:flex;flex-direction:column;align-items:center;gap:5px}
+.cap{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted);text-align:center;margin:4px 0 8px}
+.slot{width:var(--w);min-height:48px;border:1px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:10px;
+  font-weight:600;cursor:pointer;padding:6px 12px;text-align:center;transition:.2s;position:relative;font-size:15px}
+.slot .n{position:absolute;left:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.slot.full{border-style:solid;background:color-mix(in srgb,var(--sc) 20%,var(--panel2));border-color:color-mix(in srgb,var(--sc) 55%,var(--line))}
+.slot.right{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,var(--panel2))}
+.slot.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 16%,var(--panel2))}
+.scale{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:6px}
+.scale th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted);font-weight:600;padding:8px;border-bottom:1px solid var(--line)}
+.scale td{padding:9px 8px;border-bottom:1px solid #1b2542}
+.scale td.m{font-family:var(--mono)}
+.scale td.h{font-family:var(--mono);color:var(--t2);font-weight:700}
+
+/* ---------- Caché ---------- */
+.seq{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.sq{position:relative;width:52px;height:56px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--mono);font-weight:800;font-size:18px}
+.sq small{position:absolute;top:3px;left:6px;font-size:9px;color:var(--muted);font-weight:400}
+.sq i{font-style:normal;font-size:9px;letter-spacing:.08em}
+.sq.cur{border-color:var(--acc);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 40%,transparent);animation:pulse 1.4s infinite}
+.sq.hit{border-color:var(--ok);color:var(--ok)} .sq.miss{border-color:var(--bad);color:var(--bad)}
+@keyframes pulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 10%,transparent)}}
+.ask p{margin:0;color:var(--muted)}
+.hm{display:flex;gap:10px}
+.hm .btn{flex:1;font-size:22px;font-family:var(--mono);font-weight:800;padding:16px}
+.hm .hitb:hover{border-color:var(--ok);color:var(--ok)} .hm .missb:hover{border-color:var(--bad);color:var(--bad)}
+.cset{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.slab{font-family:var(--mono);font-size:12px;color:var(--rc);width:92px;flex:none}
+.cways{display:flex;gap:8px;flex-wrap:wrap}
+.cell{position:relative;width:88px;height:62px;border:1px dashed var(--line);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono)}
+.cell b{font-size:19px}
+.cell small{position:absolute;top:3px;left:7px;font-size:9px;color:var(--muted)}
+.cell .lru{position:absolute;bottom:3px;font-size:9px;letter-spacing:.1em;color:var(--t2)}
+.cell.full{border-style:solid;border-color:color-mix(in srgb,var(--rc) 55%,var(--line));background:color-mix(in srgb,var(--rc) 12%,var(--panel2))}
+.cell.fhit{animation:fh 1s}
+.cell.fmiss{animation:fm 1s}
+@keyframes fh{0%,40%{box-shadow:0 0 0 3px var(--ok),0 0 26px var(--ok)}}
+@keyframes fm{0%,40%{box-shadow:0 0 0 3px var(--bad),0 0 26px var(--bad)}}
+.mem{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.mb{font-family:var(--mono);font-size:13px;text-align:center;padding:7px 0;border-radius:7px;border:1px solid color-mix(in srgb,var(--rc) 40%,var(--line));
+  background:color-mix(in srgb,var(--rc) 9%,transparent)}
+.mb.cur{background:var(--rc);color:#0a0d16;font-weight:800;border-color:var(--rc)}
+.legend{font-size:12.5px;color:var(--muted);margin-top:8px}
+
+/* ---------- Paginación ---------- */
+.ptab{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:15px}
+.ptab th{font-size:11px;letter-spacing:.1em;color:var(--muted);text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);font-weight:600}
+.ptab td{padding:8px 10px;border-bottom:1px solid #1b2542}
+.ptab tr.inv td{color:#6c7799}
+.ptab tr.hl td{background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--text)}
+.ptab tr.hl.inv td{background:color-mix(in srgb,var(--bad) 18%,transparent)}
+.vbit{display:inline-block;width:22px;text-align:center;border-radius:5px;font-weight:800}
+.v1{background:color-mix(in srgb,var(--ok) 25%,transparent);color:var(--ok)}
+.v0{background:color-mix(in srgb,var(--bad) 25%,transparent);color:var(--bad)}
+.flow{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin:6px 0 18px;font-family:var(--mono)}
+.fb{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--panel2);min-width:70px;text-align:center}
+.fb small{display:block;font-size:9.5px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.fb b{font-size:17px}
+.fb.p{border-color:color-mix(in srgb,var(--t2) 50%,var(--line))} .fb.p b{color:var(--t2)}
+.fb.o{border-color:color-mix(in srgb,var(--t4) 50%,var(--line))} .fb.o b{color:var(--t4)}
+.fb.f b{color:var(--t3)} .fb.d b{color:var(--acc)}
+.arrow{align-self:center;color:var(--muted)}
+.steps{margin:10px 0 0;padding-left:0;list-style:none;font-size:15px}
+.steps li{padding:5px 0;border-bottom:1px dashed #22305a}
+.steps code{color:var(--t2)}
+
+/* ---------- Disco ---------- */
+.disk-wrap{display:grid;grid-template-columns:260px 1fr;gap:16px}
+.disk svg{width:100%;height:auto;display:block}
+.spin{transform-origin:110px 110px;animation:spin linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dl{font-size:13px;color:#c4cceb;margin:10px 0 0;padding:0;list-style:none}
+.dl li{padding:3px 0}
+.dl b{color:var(--acc);font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+.specs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 16px}
+.spec{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.spec small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.spec b{font-family:var(--mono);font-size:19px}
+.formula{font-family:var(--mono);font-size:13.5px;color:#c4cceb;background:#0c1222;border:1px solid var(--line);border-radius:10px;padding:10px 14px;line-height:1.8}
+.formula b{color:var(--acc)}
+.bar{display:flex;height:30px;border-radius:8px;overflow:hidden;margin:12px 0 6px;border:1px solid var(--line)}
+.bar span{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:#0a0d16;font-weight:800;white-space:nowrap;overflow:hidden;min-width:2px}
+.blg{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.blg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* ---------- Clasifica ---------- */
+.kbox{text-align:center;padding:30px 20px}
+.kcard{display:inline-block;font-size:clamp(24px,3.6vw,36px);font-weight:700;padding:26px 34px;border-radius:18px;background:var(--panel2);border:1px solid var(--line);margin:14px 0 24px;min-width:min(520px,100%)}
+.kbtns{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:640px;margin:0 auto}
+.kbtns .btn{font-size:20px;padding:20px}
+.kbtns .ka{border-color:color-mix(in srgb,var(--t4) 55%,var(--line))} .kbtns .ka:hover{background:color-mix(in srgb,var(--t4) 18%,var(--panel2))}
+.kbtns .kb{border-color:color-mix(in srgb,var(--t5) 55%,var(--line))} .kbtns .kb:hover{background:color-mix(in srgb,var(--t5) 18%,var(--panel2))}
+.kflash-ok{animation:kok .5s} .kflash-bad{animation:kbad .5s}
+@keyframes kok{0%{box-shadow:0 0 0 4px var(--ok)}} @keyframes kbad{0%{box-shadow:0 0 0 4px var(--bad)}}
+.clock{font-family:var(--mono);font-weight:800;font-size:40px;color:var(--acc)}
+.clock.low{color:var(--bad);animation:pulse 1s infinite}
+.tbar{height:6px;border-radius:6px;background:#1b2542;overflow:hidden;margin:10px 0 0}
+.tbar i{display:block;height:100%;background:var(--acc);transition:width .1s linear}
+.klist{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;text-align:left}
+.klist div{padding:8px 12px;border-radius:9px;background:var(--panel2);font-size:14px;display:flex;justify-content:space-between;gap:10px}
+.klist div.r{border-left:3px solid var(--ok)} .klist div.w{border-left:3px solid var(--bad)} .klist div.s{border-left:3px solid var(--line);color:var(--muted)}
+.klist small{color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap}
+
+/* ---------- Trivia ---------- */
+.tq{font-size:clamp(20px,2.6vw,27px);font-weight:600;line-height:1.3;margin:14px 0 20px}
+.thead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+
+/* ---------- Podio ---------- */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin:30px 0 20px;min-height:320px}
+.pcol{display:flex;flex-direction:column;align-items:center;gap:8px;width:min(200px,30%)}
+.pcol .nm{font-weight:700;font-size:18px;text-align:center}
+.pcol .sc{font-family:var(--mono);font-weight:800;font-size:28px;color:var(--c)}
+.pblock{width:100%;border-radius:12px 12px 0 0;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 55%,#111a30),color-mix(in srgb,var(--c) 15%,#0d1424));
+  display:flex;justify-content:center;padding-top:12px;font-family:var(--mono);font-weight:800;font-size:40px;color:#0a0d16;animation:rise .9s cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom}
+@keyframes rise{from{transform:scaleY(0)}}
+.rest{max-width:520px;margin:0 auto}
+.rest div{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:16px}
+.rest b{font-family:var(--mono)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:70;width:100%;height:100%}
+
+/* ---------- Modal ---------- */
+.modal{position:fixed;inset:0;z-index:80;background:rgba(4,6,12,.75);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal.hidden{display:none}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;width:min(520px,100%);max-height:90vh;overflow:auto}
+.mbox h2{margin:0 0 14px;font-size:22px}
+.field{display:flex;align-items:center;gap:10px;margin:8px 0}
+.field input[type=text]{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);font:inherit}
+.field .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0}
+.cnt{display:flex;gap:6px}
+.cnt button{width:38px;height:38px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;font-family:var(--mono);font-weight:800}
+.cnt button.on{background:var(--t3);color:#0a0d16;border-color:var(--t3)}
+.sw{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:15px}
+.sw input{width:18px;height:18px;accent-color:var(--t3)}
+
+@media (max-width:860px){
+  .grid2,.pyr-game,.disk-wrap{grid-template-columns:1fr}
+  .specs{grid-template-columns:1fr 1fr}
+  .howto{grid-template-columns:1fr}
+  .disk{max-width:280px;margin:0 auto}
+}
+@media (max-width:720px){
+  .lvl{width:100%!important;clip-path:none;border-radius:12px;padding:14px 16px}
+  .opts,.klist{grid-template-columns:1fr}
+  .slot{width:100%!important}
+  .rule em{margin-left:0}
+  .axis{flex-direction:column}
+  main{padding:20px 14px 80px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#inicio">
+    <span class="ico"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <span><b>MEMORIA AL LÍMITE</b><small>Jerarquía de memoria · Almacenamiento secundario</small></span>
+  </a>
+  <div class="teams" id="teams"></div>
+  <div class="tools">
+    <button class="tbtn" id="btnNext" title="Pasar el turno al siguiente equipo">Pasar turno ⟳</button>
+    <button class="tbtn" id="btnPodio">🏆 Podio</button>
+    <button class="tbtn" id="btnCfg">⚙ Equipos</button>
+  </div>
+</header>
+<main id="view"></main>
+<div id="modal" class="modal hidden"></div>
+<canvas id="confetti"></canvas>
+
+<script>
+/* ================= Utilidades ================= */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const rnd=n=>Math.floor(Math.random()*n);
+const pick=a=>a[rnd(a.length)];
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const fmt=(x,d=2)=>Number(x).toLocaleString('es-CO',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fint=x=>Number(x).toLocaleString('es-CO');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const view=$('#view');
+
+/* ================= Equipos y puntaje ================= */
+const COLORS=['#ff5d73','#3cc8ff','#ffd23f','#3ee6a0','#a78bfa','#ff9f43'];
+const NAMES=['Los Registros','Los Caché','Los NVMe','Los Disquetes','Las Cintas','Los Punteros'];
+let S={teams:[0,1,2].map(i=>({name:NAMES[i],score:0})),active:0,autoTurn:true,sound:true};
+try{const d=JSON.parse(localStorage.getItem('memlimite-v1'));if(d&&Array.isArray(d.teams)&&d.teams.length)S=Object.assign(S,d)}catch(e){}
+function save(){try{localStorage.setItem('memlimite-v1',JSON.stringify(S))}catch(e){}}
+function teamName(i=S.active){return S.teams[i]?S.teams[i].name:''}
+function renderTeams(){
+  $('#teams').innerHTML=S.teams.map((t,i)=>`<button class="team${i===S.active?' on':''}" data-i="${i}" style="--c:${COLORS[i]}" title="Dar el turno a ${esc(t.name)}">
+    <span class="dot"></span><span class="tn">${esc(t.name)}</span><span class="ts">${t.score}</span>${i===S.active?'<span class="turn">TURNO</span>':''}</button>`).join('');
+  $$('#teams .team').forEach(b=>b.onclick=()=>{S.active=+b.dataset.i;save();renderTeams()});
+}
+function award(pts){
+  if(pts<=0)return;
+  const i=S.active;S.teams[i].score+=pts;save();renderTeams();
+  const chip=$(`#teams .team[data-i="${i}"]`);
+  if(chip){const r=chip.getBoundingClientRect();const f=document.createElement('span');f.className='floatpts';f.textContent='+'+pts;
+    f.style.left=(r.left+r.width/2)+'px';f.style.top=(r.bottom+4)+'px';f.style.color=COLORS[i];document.body.appendChild(f);setTimeout(()=>f.remove(),1400)}
+}
+function nextTurn(){S.active=(S.active+1)%S.teams.length;save();renderTeams()}
+function endTurn(){if(S.autoTurn&&S.teams.length>1)nextTurn()}
+function ptsMsg(ok,pts,who){return ok?`<b>+${pts} puntos</b> para ${esc(who)}.`:`Sin puntos para ${esc(who)}.`}
+function turnMsg(){return S.autoTurn&&S.teams.length>1?` Ahora juega <b style="color:${COLORS[S.active]}">${esc(teamName())}</b>.`:''}
+
+let AC;
+function beep(ok){
+  if(!S.sound)return;
+  try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;
+    o.type='square';o.frequency.setValueAtTime(ok?660:190,t);if(ok)o.frequency.setValueAtTime(990,t+.09);else o.frequency.setValueAtTime(140,t+.12);
+    g.gain.setValueAtTime(.05,t);g.gain.exponentialRampToValueAtTime(.0001,t+.28);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+.3)}catch(e){}
+}
+
+function frame(tier,kicker,title,intro,body){
+  return `<section style="--acc:var(--t${tier})"><a class="back" href="#inicio">← Volver a la pirámide</a>
+  <div class="ghead"><span class="kicker">${kicker}</span><h1>${title}</h1><p class="intro">${intro}</p></div>${body}</section>`;
+}
+
+/* ================= Inicio ================= */
+const GAMES=[
+  {id:'piramide',tier:0,lvl:'Registros',name:'Arma la pirámide',desc:'Ordena la jerarquía del más rápido al más lento'},
+  {id:'cache',tier:1,lvl:'Caché',name:'Cazador de caché',desc:'Predice HIT o MISS con mapeo directo, asociativo y por conjuntos'},
+  {id:'paginacion',tier:2,lvl:'RAM · Memoria virtual',name:'Traductor de páginas',desc:'Convierte direcciones virtuales en físicas… o detecta el fallo de página'},
+  {id:'clasifica',tier:3,lvl:'SSD · Controladores',name:'Clasifica rápido',desc:'¿Volátil? ¿Físico o lógico? ¿SATA o NVMe? Contra el reloj'},
+  {id:'disco',tier:4,lvl:'Disco duro',name:'Carrera del disco',desc:'Calcula el tiempo de acceso: búsqueda + rotación + transferencia'},
+  {id:'trivia',tier:5,lvl:'Terciario · Todo el tema',name:'Trivia relámpago',desc:'10 preguntas de 20 segundos. Más rápido, más puntos'},
+];
+function renderHome(){
+  view.innerHTML=`<section class="hero">
+    <span class="kicker">Actividad práctica · Arquitectura de computadores</span>
+    <h1>¿Cuánto sabe tu equipo de <em>memoria</em>?</h1>
+    <p>Seis retos, uno por cada nivel de la jerarquía. Cada respuesta correcta suma puntos al equipo que tiene el <b>TURNO</b> (arriba). Al final, el podio.</p>
+    <div class="howto">
+      <div><b>1 · EQUIPOS</b>Configura nombres y cantidad en ⚙ Equipos.</div>
+      <div><b>2 · TURNOS</b>Responde el equipo marcado. El turno rota solo; también puedes tocar un equipo.</div>
+      <div><b>3 · NIVELES</b>Empieza por arriba y baja. Cada reto explica la respuesta.</div>
+    </div></section>
+    <div class="axis"><span>▲ MÁS RÁPIDO · MÁS CARO POR BYTE · MENOS CAPACIDAD</span><span>▼ MÁS LENTO · MÁS BARATO · MÁS CAPACIDAD</span></div>
+    <nav class="pyr">${GAMES.map((g,i)=>{const w=46+i*10.8;return `<a class="lvl" href="#${g.id}" style="--acc:var(--t${g.tier});--w:${w}%;--in:${(5.4/w*100).toFixed(2)}%">
+      <span class="ln">${String(i).padStart(2,'0')}</span><span class="lt"><small>${g.lvl}</small><b>${g.name}</b><em>${g.desc}</em></span><span class="go">→</span></a>`}).join('')}</nav>
+    <p class="foot">Consejo: proyecta la página en pantalla completa (F11) y juega con todo el salón.</p>`;
+}
+
+/* ================= 00 · Pirámide ================= */
+const LEVELS=[
+  {n:'Registros',lat:'≈ 0,3 ns',cap:'Bytes',h:'0,3 segundos'},
+  {n:'Caché L1',lat:'≈ 1 ns',cap:'32–64 KB',h:'1 segundo'},
+  {n:'Caché L2 / L3',lat:'≈ 4–40 ns',cap:'1–64 MB',h:'4–40 segundos'},
+  {n:'Memoria RAM (DRAM)',lat:'≈ 100 ns',cap:'8–64 GB',h:'≈ 2 minutos'},
+  {n:'SSD NVMe',lat:'≈ 20–100 µs',cap:'0,5–4 TB',h:'6 horas – 1 día'},
+  {n:'Disco duro (HDD)',lat:'≈ 5–10 ms',cap:'1–24 TB',h:'2–4 meses'},
+  {n:'Cinta / disco óptico',lat:'segundos',cap:'Decenas de TB',h:'décadas'},
+];
+const LCOL=['--t0','--t1','--t1','--t2','--t3','--t4','--t5'];
+let P=null;
+function pInit(){P={pool:shuffle(LEVELS.map((_,i)=>i)),slots:Array(7).fill(null),checked:false}}
+function renderPiramide(){
+  if(!P)pInit();
+  view.innerHTML=frame(0,'Nivel 00 · Registros','Arma la pirámide',
+    'Ordena los niveles de la jerarquía desde el más rápido (arriba) hasta el más lento (abajo). Cada nivel bien ubicado vale 5 puntos; la pirámide perfecta, 15 extra.',
+    `<div class="pyr-game">
+      <div class="panel"><h3>Tarjetas</h3><div class="pool" id="pPool"></div><p class="hint">Toca una tarjeta para ponerla en el siguiente nivel libre. Toca un nivel para devolver la tarjeta.</p></div>
+      <div class="panel"><div class="cap">▲ MÁS RÁPIDO · MÁS CERCA DE LA CPU</div><div class="slots" id="pSlots"></div><div class="cap">▼ MÁS CAPACIDAD · MÁS BARATO</div>
+        <div class="actions" style="justify-content:center"><button class="btn primary" id="pCheck">Revisar pirámide</button><button class="btn" id="pReset">Barajar de nuevo</button></div></div>
+    </div><div id="pFeed"></div>`);
+  $('#pReset').onclick=()=>{pInit();renderPiramide()};
+  $('#pCheck').onclick=pCheck;
+  drawP();
+}
+function drawP(){
+  $('#pPool').innerHTML=P.pool.length?P.pool.map(i=>`<button class="card" data-i="${i}">${LEVELS[i].n}</button>`).join(''):'<p class="hint" style="margin:0">¡Todas ubicadas! Revisa la pirámide.</p>';
+  $('#pSlots').innerHTML=P.slots.map((v,k)=>{
+    const st=P.checked?(v===k?' right':' wrong'):'';
+    return `<div class="slot${v!==null?' full':''}${st}" data-k="${k}" style="--w:${34+k*11}%;--sc:var(${v!==null?LCOL[v]:'--line'})"><span class="n">${k+1}</span>${v!==null?LEVELS[v].n:'<span style="color:var(--muted);font-weight:400">· · ·</span>'}</div>`}).join('');
+  $$('#pPool .card').forEach(b=>b.onclick=()=>{if(P.checked)return;const i=+b.dataset.i;const k=P.slots.indexOf(null);if(k<0)return;P.slots[k]=i;P.pool=P.pool.filter(x=>x!==i);drawP()});
+  $$('#pSlots .slot').forEach(s=>s.onclick=()=>{if(P.checked)return;const k=+s.dataset.k;const v=P.slots[k];if(v===null)return;P.slots[k]=null;P.pool.push(v);drawP()});
+  $('#pCheck').disabled=P.checked||P.slots.includes(null);
+}
+function pCheck(){
+  P.checked=true;const who=teamName();
+  const good=P.slots.filter((v,k)=>v===k).length;const perfect=good===7;
+  const pts=good*5+(perfect?15:0);award(pts);beep(good>=5);endTurn();drawP();
+  $('#pFeed').innerHTML=`<div class="feed ${perfect?'ok':good>=4?'':'bad'}"><span class="tag">${perfect?'¡PIRÁMIDE PERFECTA!':good+' DE 7 NIVELES CORRECTOS'}</span>${ptsMsg(pts>0,pts,who)}${turnMsg()}</div>
+  <div class="panel" style="margin-top:16px"><h3>La jerarquía real · si 1 ns durara 1 segundo…</h3>
+  <table class="scale"><tr><th>NIVEL</th><th>LATENCIA TÍPICA</th><th>CAPACIDAD</th><th>EN "TIEMPO HUMANO"</th></tr>
+  ${LEVELS.map(l=>`<tr><td>${l.n}</td><td class="m">${l.lat}</td><td class="m">${l.cap}</td><td class="h">${l.h}</td></tr>`).join('')}</table>
+  <div class="key"><b>¿Por qué funciona la jerarquía?</b> Por el <b>principio de localidad</b>: lo que se usó hace poco se volverá a usar pronto (<b>temporal</b>) y lo que está cerca de lo que se usó también (<b>espacial</b>). Así, cada nivel pequeño y rápido guarda copias de lo más usado del nivel siguiente, y la mayoría de accesos se resuelven arriba.</div></div>`;
+}
+
+/* ================= 01 · Caché ================= */
+const CMODES={
+  directo:{sets:4,ways:1,label:'Mapeo directo',rule:'línea = bloque mod 4'},
+  asociativo:{sets:1,ways:4,label:'Totalmente asociativo',rule:'cualquier línea libre · si está llena, sale la LRU'},
+  conjuntos:{sets:2,ways:2,label:'Por conjuntos (2 vías)',rule:'conjunto = bloque mod 2 · dentro del conjunto, LRU'},
+};
+const RES=['#ff9f43','#3cc8ff','#3ee6a0','#a78bfa'];
+let C=null;
+function genSeq(){
+  const a=rnd(4);let b=rnd(4);while(b===a)b=rnd(4);
+  const pool=[a,a+4,a+8,b,b+12,rnd(16)];const s=[];
+  for(let i=0;i<10;i++){if(i>=2&&Math.random()<.45)s.push(pick(s.slice(-3)));else s.push(pick(pool))}
+  return s;
+}
+function cInit(mode,keep){
+  const cfg=CMODES[mode];
+  C={mode,seq:keep&&C?C.seq:genSeq(),rates:keep&&C?C.rates:{},i:0,time:0,
+     sets:Array.from({length:cfg.sets},()=>Array(cfg.ways).fill(null)),res:[],seen:new Set(),answered:false,last:null,fb:''};
+}
+function cSim(b){
+  const cfg=CMODES[C.mode],s=b%cfg.sets,set=C.sets[s];
+  const w=set.findIndex(x=>x&&x.b===b);
+  if(w>=0){set[w].t=++C.time;return{hit:true,s,w}}
+  let k=set.findIndex(x=>!x),victim=null;
+  if(k<0){k=set.reduce((m,x,j)=>x.t<set[m].t?j:m,0);victim=set[k].b}
+  set[k]={b,t:++C.time};return{hit:false,s,w:k,victim};
+}
+function renderCache(){
+  if(!C)cInit('directo');
+  const cfg=CMODES[C.mode];
+  view.innerHTML=frame(1,'Nivel 01 · Caché','Cazador de caché',
+    'La CPU va a pedir 10 bloques de memoria. Antes de cada acceso, el equipo con el turno predice: ¿el bloque ya está en la caché (<b class="okc">HIT</b>) o hay que traerlo de la RAM (<b class="badc">MISS</b>)? Cada predicción correcta vale 10 puntos.',
+    `<div class="tabs" id="cTabs">${Object.entries(CMODES).map(([k,m])=>`<button class="tab${k===C.mode?' on':''}" data-m="${k}">${m.label}</button>`).join('')}</div>
+    <div class="rule"><span>Regla</span><code>${cfg.rule}</code><em>Caché de 4 líneas · memoria de 16 bloques</em></div>
+    <div class="grid2">
+      <div class="panel"><h3>Secuencia de accesos</h3><div class="seq" id="cSeq"></div><div id="cAsk"></div></div>
+      <div class="panel"><h3>Caché</h3><div id="cGrid"></div><h3 class="mt">Memoria principal (bloques)</h3><div class="mem" id="cMem"></div>
+        <p class="legend">${C.mode==='asociativo'?'En totalmente asociativo cualquier bloque puede ir a cualquier línea.':`Mismo color = compiten por ${C.mode==='directo'?'la misma línea':'el mismo conjunto'}.`}</p></div>
+    </div>`);
+  $$('#cTabs .tab').forEach(t=>t.onclick=()=>{cInit(t.dataset.m,true);renderCache()});
+  drawCache();
+}
+function drawCache(){
+  const cfg=CMODES[C.mode],done=C.i>=10;
+  $('#cSeq').innerHTML=C.seq.map((b,k)=>{const r=C.res[k];const cls=r?(r.hit?'hit':'miss'):(k===C.i?'cur':'');
+    return `<span class="sq ${cls}"><small>${k+1}</small>${b}${r?`<i>${r.hit?'HIT':'MISS'}</i>`:''}</span>`}).join('');
+  $('#cGrid').innerHTML=C.sets.map((set,s)=>{
+    const full=set.every(x=>x);const lru=full&&cfg.ways>1?set.reduce((m,x,j)=>x.t<set[m].t?j:m,0):-1;
+    return `<div class="cset" style="--rc:${RES[s%4]}">${cfg.sets>1?`<span class="slab">${C.mode==='directo'?'Línea '+s:'Conjunto '+s}</span>`:''}<div class="cways">${set.map((x,w)=>{
+      const last=C.last&&C.last.s===s&&C.last.w===w;
+      return `<div class="cell${x?' full':''}${last?(C.last.hit?' fhit':' fmiss'):''}">${C.mode!=='directo'?`<small>${C.mode==='asociativo'?'Línea '+w:'Vía '+w}</small>`:''}<b>${x?'B'+x.b:'—'}</b>${w===lru?'<span class="lru">LRU</span>':''}</div>`}).join('')}</div></div>`}).join('');
+  const cur=!done&&!C.answered?C.seq[C.i]:null;
+  $('#cMem').innerHTML=Array.from({length:16},(_,b)=>`<span class="mb${b===cur?' cur':''}" style="--rc:${RES[b%cfg.sets]}">${b}</span>`).join('');
+  const ask=$('#cAsk');
+  if(done){
+    const hits=C.res.filter(r=>r.hit).length,okn=C.res.filter(r=>r.ok).length;C.rates[C.mode]=hits;
+    ask.innerHTML=`<div class="sum"><div class="stat"><b>${hits*10}%</b><span>tasa de aciertos de la caché (${hits}/10)</span></div><div class="stat"><b>${okn}/10</b><span>predicciones correctas</span></div></div>
+      <div class="key"><b>Compara los mapeos con la misma secuencia:</b><br>${Object.entries(CMODES).map(([k,m])=>`${m.label}: <b>${C.rates[k]!=null?C.rates[k]*10+'%':'—'}</b>`).join(' · ')}</div>
+      <div class="actions">${Object.entries(CMODES).filter(([k])=>k!==C.mode).map(([k,m])=>`<button class="btn" data-m="${k}">Probar ${m.label.toLowerCase()}</button>`).join('')}<button class="btn primary" id="cNew">Nueva secuencia</button></div>`;
+    $$('#cAsk [data-m]').forEach(b=>b.onclick=()=>{cInit(b.dataset.m,true);renderCache()});
+    $('#cNew').onclick=()=>{C=null;cInit('directo');renderCache()};
+  }else if(!C.answered){
+    ask.innerHTML=`<div class="ask"><p class="prog">Acceso ${C.i+1} de 10 · la CPU pide el</p><div class="big">bloque ${C.seq[C.i]}</div>
+      <div class="hm"><button class="btn hitb" data-p="hit">HIT</button><button class="btn missb" data-p="miss">MISS</button></div></div>`;
+    $$('#cAsk [data-p]').forEach(b=>b.onclick=()=>cAnswer(b.dataset.p));
+  }else{
+    ask.innerHTML=`${C.fb}<div class="actions"><button class="btn primary" id="cNext">${C.i===9?'Ver resultado':'Siguiente acceso →'}</button></div>`;
+    $('#cNext').onclick=()=>{C.i++;C.answered=false;C.last=null;drawCache()};
+  }
+}
+function cAnswer(pred){
+  const b=C.seq[C.i],first=!C.seen.has(b),who=teamName();
+  const r=cSim(b);C.seen.add(b);const ok=(pred==='hit')===r.hit;
+  C.res.push({hit:r.hit,ok});C.last=r;C.answered=true;
+  if(ok)award(10);beep(ok);endTurn();
+  const m=C.mode;let t='';
+  if(m==='directo')t+=`Bloque ${b} → línea ${b} mod 4 = <b>${r.s}</b>. `;
+  if(m==='conjuntos')t+=`Bloque ${b} → conjunto ${b} mod 2 = <b>${r.s}</b>. `;
+  if(r.hit)t+=`${m==='directo'?'Esa línea ya tenía el bloque '+b:'El bloque '+b+' ya estaba '+(m==='conjuntos'?'en ese conjunto':'en la caché')}: <b class="okc">HIT</b>.`;
+  else if(r.victim==null)t+=`${m==='directo'?'La línea estaba vacía':'Había espacio libre'}: <b class="badc">MISS</b>${first?' (fallo obligatorio: es la primera vez que se pide)':''} y se trae el bloque desde la RAM.`;
+  else t+=`<b class="badc">MISS</b>${first?' (fallo obligatorio)':m==='asociativo'?' por capacidad':' por conflicto'}: sale el bloque ${r.victim}${m==='directo'?'':' (el usado hace más tiempo · LRU)'} y entra el ${b}.`;
+  C.fb=`<div class="feed ${ok?'ok':'bad'}"><span class="tag">${ok?'¡PREDICCIÓN CORRECTA!':'PREDICCIÓN INCORRECTA'}</span>${t}<br>${ptsMsg(ok,10,who)}${turnMsg()}</div>`;
+  drawCache();
+}
+
+/* ================= 02 · Paginación ================= */
+const PS=1024;let PG=null;
+function pgInit(){
+  const frames=shuffle([...Array(16).keys()]).slice(0,8),inv=shuffle([...Array(8).keys()]).slice(0,2);
+  PG={table:frames.map((f,p)=>({f,v:!inv.includes(p)})),round:0,total:6,correct:0};pgNext();
+}
+function pgNext(){
+  const valid=[...Array(8).keys()].filter(p=>PG.table[p].v),invalid=[...Array(8).keys()].filter(p=>!PG.table[p].v);
+  const p=Math.random()<.25?pick(invalid):pick(valid),off=rnd(PS),va=p*PS+off,e=PG.table[p];
+  const FAULT='Fallo de página';let correct,nums;
+  if(e.v){correct=e.f*PS+off;nums=[va,e.f*PS,e.f*1000+off,(e.f+1)*PS+off,p*PS+e.f]}
+  else{correct=FAULT;nums=[va,off,p*1000+off,(p+1)*PS+off]}
+  nums=[...new Set(nums)].filter(n=>n!==correct);nums=shuffle(nums);
+  const need=e.v?2:3;
+  while(nums.length<need){const n=rnd(16)*PS+off;if(n!==correct&&!nums.includes(n))nums.push(n)}
+  const opts=shuffle(e.v?[correct,FAULT,...nums.slice(0,2)]:[FAULT,...nums.slice(0,3)]);
+  PG.q={p,off,va,correct,opts,answered:false,pick:null,hint:false};
+}
+function renderPag(){
+  if(!PG)pgInit();
+  view.innerHTML=frame(2,'Nivel 02 · RAM y memoria virtual','Traductor de páginas',
+    'Cada proceso trabaja con direcciones <b>virtuales</b>. La MMU las parte en <b>número de página</b> y <b>desplazamiento</b>, busca la página en la tabla y arma la dirección <b>física</b>. Si el bit de validez es 0, la página no está en RAM: fallo de página. 15 puntos por ronda.',
+    `<div class="rule"><span>Datos</span><code>Tamaño de página = 1 KB = 1024 bytes</code><em>8 páginas virtuales · 16 marcos físicos</em></div>
+    <div class="grid2"><div class="panel"><div id="pgQ"></div></div><div class="panel"><h3>Tabla de páginas del proceso</h3><table class="ptab" id="pgTab"></table>
+    <div class="key"><b>Truco:</b> como 1024 = 2<sup>10</sup>, en binario los 10 bits bajos de la dirección son el desplazamiento y los demás son el número de página.</div></div></div>`);
+  drawPag();
+}
+function drawPag(){
+  const q=PG.q,e=PG.table[q.p];
+  $('#pgTab').innerHTML=`<tr><th>PÁGINA</th><th>MARCO</th><th>BIT VÁLIDO</th></tr>`+PG.table.map((x,p)=>
+    `<tr class="${x.v?'':'inv'}${q.answered&&p===q.p?' hl':''}"><td>${p}</td><td>${x.v?x.f:'—'}</td><td><span class="vbit ${x.v?'v1':'v0'}">${x.v?1:0}</span></td></tr>`).join('');
+  const box=$('#pgQ');
+  if(PG.round>=PG.total){
+    box.innerHTML=`<h3>Resultado</h3><div class="sum"><div class="stat"><b>${PG.correct}/${PG.total}</b><span>traducciones correctas</span></div></div>
+      <div class="key">La <b>TLB</b> es una caché de estas traducciones: si la página está ahí, ni siquiera hay que leer la tabla de páginas en RAM.</div>
+      <div class="actions"><button class="btn primary" id="pgNew">Nueva tabla y otra partida</button></div>`;
+    $('#pgNew').onclick=()=>{pgInit();renderPag()};return;
+  }
+  const A=q.answered;
+  box.innerHTML=`<p class="prog">Ronda ${PG.round+1} de ${PG.total} · dirección virtual</p><div class="big">${fint(q.va)}</div>
+    <div class="flow"><div class="fb"><small>Dir. virtual</small><b>${fint(q.va)}</b></div><span class="arrow">→</span>
+      <div class="fb p"><small>Página</small><b>${A?q.p:'?'}</b></div><div class="fb o"><small>Desplaz.</small><b>${A?q.off:'?'}</b></div><span class="arrow">→</span>
+      <div class="fb f"><small>Marco</small><b>${A?(e.v?e.f:'✕'):'?'}</b></div><span class="arrow">→</span>
+      <div class="fb d"><small>Dir. física</small><b>${A?(e.v?fint(q.correct):'FALLO'):'?'}</b></div></div>
+    <h3>¿Cuál es la dirección física?</h3>
+    <div class="opts">${q.opts.map((o,k)=>{let c='';if(A){if(o===q.correct)c=' right';else if(k===q.pick)c=' wrong'}
+      return `<button class="opt${c}" data-k="${k}" ${A?'disabled':''}><span class="l">${'ABCD'[k]}</span>${typeof o==='number'?fint(o):o}</button>`}).join('')}</div>
+    ${!A?`<div class="actions"><button class="btn" id="pgHint">${q.hint?'Ocultar pista':'Ver pista'}</button></div>${q.hint?`<div class="key">página = ⌊ DV ÷ 1024 ⌋ · desplazamiento = DV mod 1024<br>DF = marco × 1024 + desplazamiento</div>`:''}`:''}
+    <div id="pgFeed">${q.fb||''}</div>`;
+  if(!A){$$('#pgQ .opt').forEach(b=>b.onclick=()=>pgAnswer(+b.dataset.k));$('#pgHint').onclick=()=>{q.hint=!q.hint;drawPag()}}
+  else $('#pgNext').onclick=()=>{PG.round++;if(PG.round<PG.total)pgNext();drawPag()};
+}
+function pgAnswer(k){
+  const q=PG.q,e=PG.table[q.p],who=teamName();
+  q.answered=true;q.pick=k;const ok=q.opts[k]===q.correct;
+  if(ok){PG.correct++;award(15)}beep(ok);endTurn();
+  q.fb=`<div class="feed ${ok?'ok':'bad'}"><span class="tag">${ok?'¡TRADUCCIÓN CORRECTA!':'NO ERA ESA'}</span>
+    <ul class="steps"><li>página = ⌊ ${fint(q.va)} ÷ 1024 ⌋ = <code>${q.p}</code></li><li>desplazamiento = ${fint(q.va)} mod 1024 = <code>${q.off}</code></li>
+    ${e.v?`<li>la tabla dice: página ${q.p} → marco <code>${e.f}</code> (bit válido = 1)</li><li>DF = ${e.f} × 1024 + ${q.off} = <code>${fint(q.correct)}</code></li>`
+         :`<li>la página ${q.p} tiene bit válido = 0 → <b class="badc">FALLO DE PÁGINA</b>: el SO trae la página desde el disco (swap) a un marco libre, actualiza la tabla y reintenta la instrucción.</li>`}</ul>
+    ${ptsMsg(ok,15,who)}${turnMsg()}</div><div class="actions"><button class="btn primary" id="pgNext">${PG.round+1>=PG.total?'Ver resultado':'Siguiente dirección →'}</button></div>`;
+  drawPag();
+}
+
+/* ================= 03 · Clasifica ================= */
+const KSETS=[
+  {title:'¿Volátil o no volátil?',a:'Volátil',b:'No volátil',note:'Volátil = pierde los datos cuando se quita la energía.',
+   items:[['Registros de la CPU','a'],['Caché L1 (SRAM)','a'],['RAM DDR5 (DRAM)','a'],['ROM / firmware UEFI','b'],['SSD NVMe','b'],['Disco duro (HDD)','b'],['Memoria USB (flash)','b'],['Cinta LTO','b'],['Disco Blu-ray','b'],['Caché L3','a'],['Memoria de video GDDR','a'],['EEPROM','b']]},
+  {title:'¿Organización física o lógica?',a:'Física',b:'Lógica',note:'Física = cómo está construido el dispositivo. Lógica = cómo el sistema operativo organiza y ve los datos.',
+   items:[['Pista','a'],['Sector','a'],['Cilindro','a'],['Cabezal de lectura/escritura','a'],['Plato','a'],['Celda NAND','a'],['Bloque / clúster','b'],['Sistema de archivos (NTFS, ext4)','b'],['Inodo','b'],['Tabla FAT','b'],['Partición','b'],['Dirección LBA','b'],['Directorio','b']]},
+  {title:'¿SATA / AHCI o NVMe / PCIe?',a:'SATA / AHCI',b:'NVMe / PCIe',note:'La interfaz y el protocolo del controlador definen cuántas peticiones se atienden a la vez y a qué velocidad.',
+   items:[['1 cola de hasta 32 comandos','a'],['Hasta 65.535 colas de 65.536 comandos','b'],['Pensado originalmente para discos giratorios','a'],['Diseñado desde cero para memoria flash','b'],['Máximo ≈ 600 MB/s','a'],['Varios GB/s','b'],['Va directo a carriles PCIe del procesador','b'],['Cable y conector típico de un HDD de 3,5"','a'],['Colas por cada núcleo de la CPU','b'],['Muy usado en discos mecánicos de escritorio','a']]},
+];
+const KTIME=45;let K={set:0,running:false,done:false},KT=null;
+function renderClasifica(){
+  const set=KSETS[K.set];
+  view.innerHTML=frame(3,'Nivel 03 · SSD, organización y controladores','Clasifica rápido',
+    `${KTIME} segundos para clasificar todas las tarjetas que puedan. Cada acierto vale 5 puntos. Usa los botones o las flechas ← → del teclado.`,
+    `<div class="tabs" id="kTabs">${KSETS.map((s,i)=>`<button class="tab${i===K.set?' on':''}" data-s="${i}" ${K.running?'disabled':''}>${i+1}. ${s.title}</button>`).join('')}</div>
+    <div class="panel kbox" id="kBox"></div>`);
+  $$('#kTabs .tab').forEach(t=>t.onclick=()=>{if(K.running)return;K={set:+t.dataset.s,running:false,done:false};renderClasifica()});
+  drawK();
+}
+function drawK(){
+  const set=KSETS[K.set],box=$('#kBox');
+  if(!K.running&&!K.done){
+    box.innerHTML=`<p class="prog">Ronda ${K.set+1} · juega ${esc(teamName())}</p><div class="kcard">${set.title}</div><p style="color:#c4cceb;margin-top:0">${set.note}</p>
+      <button class="btn primary" id="kGo" style="font-size:18px;padding:14px 30px">¡Empezar! (${KTIME} s)</button>`;
+    $('#kGo').onclick=kStart;return;
+  }
+  if(K.running){
+    const it=K.items[K.idx];
+    box.innerHTML=`<div class="thead"><span class="prog">Tarjeta ${K.idx+1} de ${K.items.length} · ${K.ok} aciertos</span><span class="clock${K.left<=10?' low':''}" id="kClock">${Math.ceil(K.left)}</span></div>
+      <div class="tbar"><i id="kBar" style="width:${K.left/KTIME*100}%"></i></div>
+      <div class="kcard" id="kCard">${esc(it[0])}</div>
+      <div class="kbtns"><button class="btn ka" data-c="a">← ${set.a}</button><button class="btn kb" data-c="b">${set.b} →</button></div>`;
+    $$('#kBox [data-c]').forEach(b=>b.onclick=()=>kAnswer(b.dataset.c));return;
+  }
+  const who=K.who,pts=K.ok*5;
+  box.innerHTML=`<p class="prog">Resultado de ${esc(who)}</p><div class="sum" style="justify-content:center"><div class="stat" style="max-width:220px"><b>${K.ok}</b><span>aciertos</span></div><div class="stat" style="max-width:220px"><b>+${pts}</b><span>puntos</span></div></div>
+    <div class="klist">${K.items.map((it,i)=>{const r=K.log[i];const cls=r==null?'s':r?'r':'w';return `<div class="${cls}"><span>${esc(it[0])}</span><small>${it[1]==='a'?set.a:set.b}</small></div>`}).join('')}</div>
+    <div class="actions" style="justify-content:center"><button class="btn primary" id="kAgain">Otro equipo, misma ronda</button>${K.set<KSETS.length-1?`<button class="btn" id="kNextSet">Siguiente ronda →</button>`:''}</div>`;
+  $('#kAgain').onclick=()=>{K={set:K.set,running:false,done:false};renderClasifica()};
+  if($('#kNextSet'))$('#kNextSet').onclick=()=>{K={set:K.set+1,running:false,done:false};renderClasifica()};
+}
+function kStart(){
+  K.items=shuffle(KSETS[K.set].items);K.idx=0;K.ok=0;K.log=[];K.left=KTIME;K.running=true;K.done=false;K.who=teamName();K.whoIdx=S.active;
+  renderClasifica();clearInterval(KT);
+  KT=setInterval(()=>{K.left-=.1;if(K.left<=0){K.left=0;kEnd();return}
+    const c=$('#kClock'),b=$('#kBar');if(c){c.textContent=Math.ceil(K.left);c.classList.toggle('low',K.left<=10)}if(b)b.style.width=(K.left/KTIME*100)+'%'},100);
+}
+function kAnswer(c){
+  if(!K.running||K.lock)return;const it=K.items[K.idx],ok=it[1]===c;K.log[K.idx]=ok;
+  if(ok){K.ok++;S.active=K.whoIdx;award(5)}beep(ok);
+  const card=$('#kCard');
+  if(!ok&&card){card.classList.add('kflash-bad','shake');card.innerHTML=`${esc(it[0])}<div style="font-size:15px;color:var(--bad);margin-top:6px">→ ${it[1]==='a'?KSETS[K.set].a:KSETS[K.set].b}</div>`}
+  K.idx++;
+  if(K.idx>=K.items.length){setTimeout(kEnd,ok?150:700);K.running=false;return}
+  if(ok)drawK();else{K.lock=true;setTimeout(()=>{K.lock=false;if(K.running)drawK()},650)}
+}
+function kEnd(){clearInterval(KT);K.running=false;K.done=true;endTurn();if(location.hash==='#clasifica'){renderClasifica()}}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeModal();
+  if(e.target.closest&&e.target.closest('input,textarea'))return;
+  if(location.hash==='#clasifica'&&K.running&&!K.lock){if(e.key==='ArrowLeft')kAnswer('a');if(e.key==='ArrowRight')kAnswer('b')}
+  if(location.hash==='#trivia'&&T&&!T.answered&&T.i<T.qs.length){const k='1234'.indexOf(e.key)>=0?'1234'.indexOf(e.key):'abcd'.indexOf(e.key.toLowerCase());if(k>=0)tAnswer(k)}
+  if(e.key==='Escape')closeModal();
+});
+
+/* ================= 04 · Disco ================= */
+let D=null;
+function dInit(){D={round:0,total:4,correct:0};dNext()}
+function dNext(){
+  const rpm=pick([5400,7200,10000,15000]),seek=pick([3,4,6,8,9]),size=pick([64,128,256,512]),rate=pick([100,125,160,200,250]);
+  const rot=30000/rpm,tr=size/rate,total=seek+rot+tr,r2=x=>Math.round(x*100)/100;
+  const cands=[seek+60000/rpm+tr,rot+tr,seek+rot+tr*8,seek+rot,seek+tr].map(r2);
+  const opts=[r2(total)];for(const c of shuffle(cands)){if(opts.length>=4)break;if(opts.every(o=>Math.abs(o-c)>=.1))opts.push(c)}
+  D.q={rpm,seek,size,rate,rot,tr,total:r2(total),opts:shuffle(opts),answered:false,pick:null};
+}
+function diskSVG(rpm){
+  const tracks=[34,48,62,76,90];let sec='';for(let a=0;a<360;a+=30){const r=a*Math.PI/180;sec+=`<line x1="${110+28*Math.cos(r)}" y1="${110+28*Math.sin(r)}" x2="${110+98*Math.cos(r)}" y2="${110+98*Math.sin(r)}" stroke="#2c3a63" stroke-width="1"/>`}
+  const arc=(r1,r2,a1,a2)=>{const p=(r,a)=>[110+r*Math.cos(a*Math.PI/180),110+r*Math.sin(a*Math.PI/180)];const[A,B,Cc,Dd]=[p(r2,a1),p(r2,a2),p(r1,a2),p(r1,a1)];
+    return `M${A} A${r2},${r2} 0 0 1 ${B} L${Cc} A${r1},${r1} 0 0 0 ${Dd} Z`};
+  return `<svg viewBox="0 0 220 220" aria-label="Disco duro girando"><defs><radialGradient id="pl" cx="45%" cy="40%"><stop offset="0" stop-color="#3a4870"/><stop offset="1" stop-color="#151d36"/></radialGradient></defs>
+    <g class="spin" style="animation-duration:${(5400/rpm).toFixed(2)}s"><circle cx="110" cy="110" r="100" fill="url(#pl)" stroke="#3a4a78"/>
+    ${tracks.map(r=>`<circle cx="110" cy="110" r="${r}" fill="none" stroke="#2c3a63"/>`).join('')}${sec}
+    <path d="${arc(62,76,0,30)}" fill="var(--t4)" opacity=".85"/><circle cx="110" cy="110" r="18" fill="#0d1424" stroke="#3a4a78"/></g>
+    <g><line x1="206" y1="206" x2="${110+69*Math.cos(-.6)}" y2="${110+69*Math.sin(-.6)+0}" stroke="#c4cceb" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="206" cy="206" r="9" fill="#c4cceb"/><circle cx="${110+69*Math.cos(-.6)}" cy="${110+69*Math.sin(-.6)}" r="5" fill="var(--t2)"/></g></svg>`;
+}
+function renderDisco(){
+  if(!D)dInit();
+  view.innerHTML=frame(4,'Nivel 04 · Disco duro','Carrera del disco',
+    'Un HDD tiene que mover el brazo hasta la pista (<b>búsqueda</b>), esperar a que el sector pase bajo el cabezal (<b>latencia rotacional</b>) y leer los datos (<b>transferencia</b>). Calcula el tiempo medio de acceso. 15 puntos por ronda.',
+    `<div class="disk-wrap"><div class="panel disk"><div id="dSvg"></div><ul class="dl">
+      <li><b>PLATO</b> disco magnético que gira</li><li><b>PISTA</b> cada anillo concéntrico</li><li><b>SECTOR</b> porción de una pista (en azul)</li>
+      <li><b>CABEZAL</b> en la punta del brazo</li><li><b>CILINDRO</b> la misma pista en todos los platos</li></ul></div>
+    <div class="panel" id="dQ"></div></div>`);
+  drawDisco();
+}
+function drawDisco(){
+  const box=$('#dQ');
+  if(D.round>=D.total){
+    $('#dSvg').innerHTML=diskSVG(7200);
+    box.innerHTML=`<h3>Resultado</h3><div class="sum"><div class="stat"><b>${D.correct}/${D.total}</b><span>cálculos correctos</span></div></div>
+      <div class="key">En un HDD lo que más pesa casi siempre es la <b>mecánica</b> (búsqueda + rotación). Por eso un SSD, sin partes móviles, accede en décimas de milisegundo, y por eso los controladores <b>NVMe</b> aprovechan mejor esa velocidad que AHCI.</div>
+      <div class="actions"><button class="btn primary" id="dNew">Jugar otra partida</button></div>`;
+    $('#dNew').onclick=()=>{dInit();renderDisco()};return;
+  }
+  const q=D.q,A=q.answered;$('#dSvg').innerHTML=diskSVG(q.rpm);
+  box.innerHTML=`<p class="prog">Ronda ${D.round+1} de ${D.total}</p>
+    <div class="specs"><div class="spec"><small>Velocidad</small><b>${fint(q.rpm)} RPM</b></div><div class="spec"><small>Búsqueda media</small><b>${q.seek} ms</b></div>
+      <div class="spec"><small>Bloque a leer</small><b>${q.size} KB</b></div><div class="spec"><small>Transferencia</small><b>${q.rate} MB/s</b></div></div>
+    <div class="formula"><b>T<sub>acceso</sub></b> = T<sub>búsqueda</sub> + Latencia rotacional + T<sub>transferencia</sub><br>
+      Latencia rotacional media = ½ × (60 000 ÷ RPM) ms<br>T<sub>transferencia</sub> = tamaño ÷ tasa &nbsp;<span style="color:var(--muted)">(usa 1 MB = 1000 KB)</span></div>
+    <h3 class="mt">¿Tiempo medio de acceso?</h3>
+    <div class="opts">${q.opts.map((o,k)=>{let c='';if(A){if(o===q.total)c=' right';else if(k===q.pick)c=' wrong'}
+      return `<button class="opt${c}" data-k="${k}" ${A?'disabled':''}><span class="l">${'ABCD'[k]}</span>${fmt(o)} ms</button>`}).join('')}</div>
+    <div>${q.fb||''}</div>`;
+  if(!A)$$('#dQ .opt').forEach(b=>b.onclick=()=>dAnswer(+b.dataset.k));
+  else $('#dNext').onclick=()=>{D.round++;if(D.round<D.total)dNext();drawDisco()};
+}
+function dAnswer(k){
+  const q=D.q,who=teamName();q.answered=true;q.pick=k;const ok=q.opts[k]===q.total;
+  if(ok){D.correct++;award(15)}beep(ok);endTurn();
+  const ssd=0.1+q.size/3000,x=q.total/ssd,sum=q.seek+q.rot+q.tr;
+  q.fb=`<div class="feed ${ok?'ok':'bad'}"><span class="tag">${ok?'¡CÁLCULO CORRECTO!':'NO ERA ESE'}</span>
+    <ul class="steps"><li>Búsqueda: <code>${q.seek} ms</code></li><li>Rotación: ½ × 60 000 ÷ ${fint(q.rpm)} = <code>${fmt(q.rot)} ms</code></li>
+    <li>Transferencia: ${q.size} KB ÷ ${q.rate} MB/s = <code>${fmt(q.tr)} ms</code></li><li>Total: <code>${fmt(q.total)} ms</code></li></ul>
+    <div class="bar"><span style="width:${q.seek/sum*100}%;background:var(--t0)">búsqueda</span><span style="width:${q.rot/sum*100}%;background:var(--t2)">rotación</span><span style="width:${q.tr/sum*100}%;background:var(--t4)">${q.tr/sum>.12?'transf.':''}</span></div>
+    <div class="blg"><span><i style="background:var(--t0)"></i>búsqueda</span><span><i style="background:var(--t2)"></i>rotación</span><span><i style="background:var(--t4)"></i>transferencia</span></div>
+    <p style="margin:10px 0 4px">Un SSD NVMe (≈ 0,1 ms de acceso y ≈ 3000 MB/s) haría lo mismo en ≈ <b>${fmt(ssd)} ms</b>: unas <b>${fint(Math.round(x))} veces</b> más rápido.</p>
+    ${ptsMsg(ok,15,who)}${turnMsg()}</div><div class="actions"><button class="btn primary" id="dNext">${D.round+1>=D.total?'Ver resultado':'Siguiente disco →'}</button></div>`;
+  drawDisco();
+}
+
+/* ================= 05 · Trivia ================= */
+const QS=[
+  {q:'Un programa recorre un arreglo elemento por elemento. ¿Qué localidad aprovecha la caché?',o:['Localidad espacial','Localidad temporal','Localidad de disco','Ninguna: siempre falla'],e:'Accede a direcciones vecinas: al traer un bloque completo a la caché, los siguientes elementos ya están ahí.'},
+  {q:'La variable contadora de un bucle se usa miles de veces seguidas. Eso es…',o:['Localidad temporal','Localidad espacial','Un fallo por conflicto','Paginación'],e:'Lo que se usó hace poco se volverá a usar pronto.'},
+  {q:'¿Con qué tecnología se construye normalmente la memoria caché?',o:['SRAM','DRAM','NAND flash','EEPROM'],e:'La SRAM es rápida y no necesita refresco, pero es cara y ocupa más área: por eso la caché es pequeña.'},
+  {q:'¿Por qué la RAM principal (DRAM) necesita "refresco"?',o:['Cada bit es una carga en un condensador que se descarga','Porque es no volátil','Para vaciar la caché','Para cambiar de página'],e:'El condensador pierde carga con el tiempo; hay que reescribirlo periódicamente.'},
+  {q:'Mapeo directo, caché de 8 líneas. ¿En qué línea va el bloque 13?',o:['Línea 5','Línea 1','Línea 13','Línea 3'],e:'13 mod 8 = 5.'},
+  {q:'¿Qué mapeo elimina los fallos por conflicto pero exige comparar la etiqueta en todas las líneas a la vez?',o:['Totalmente asociativo','Directo','Por conjuntos de 2 vías','Segmentado'],e:'El bloque puede estar en cualquier línea, así que hay que buscarlo en todas en paralelo: hardware más costoso.'},
+  {q:'¿Qué es la TLB?',o:['Una caché de traducciones de página virtual → física','Un tipo de disco duro','La tabla de asignación de archivos','Un registro de la ALU'],e:'Translation Lookaside Buffer: evita leer la tabla de páginas en RAM en cada acceso.'},
+  {q:'Un proceso pide una página cuyo bit de validez está en 0. ¿Qué ocurre?',o:['Fallo de página: el SO la trae desde el disco','Un acierto de caché','La CPU se reinicia','Se termina el proceso'],e:'El SO atiende la interrupción, carga la página en un marco y reintenta la instrucción.'},
+  {q:'El sistema pasa más tiempo intercambiando páginas con el disco que ejecutando. ¿Cómo se llama?',o:['Hiperpaginación (thrashing)','Fragmentación externa','Write-back','Prefetching'],e:'Pasa cuando los procesos activos no caben en RAM y se quitan marcos unos a otros.'},
+  {q:'Páginas de 4 KB (4096 B). Dirección virtual 8200. ¿Página y desplazamiento?',o:['Página 2, desplazamiento 8','Página 8, desplazamiento 2','Página 2, desplazamiento 200','Página 1, desplazamiento 4104'],e:'8200 ÷ 4096 = 2, con resto 8.'},
+  {q:'Política de escritura write-back:',o:['Escribe en RAM solo cuando el bloque modificado sale de la caché','Escribe en caché y en RAM al mismo tiempo','Nunca escribe en RAM','Escribe directo en el disco'],e:'Usa un bit "sucio" (dirty) para saber qué bloques hay que copiar al reemplazarlos.'},
+  {q:'¿Qué parte de un SSD traduce direcciones lógicas a páginas físicas de flash y reparte el desgaste?',o:['La FTL (Flash Translation Layer)','La TLB','La BIOS','El cabezal'],e:'La FTL hace el mapeo y el wear leveling para que ninguna celda se gaste antes que las demás.'},
+  {q:'¿Para qué sirve el comando TRIM?',o:['Avisa al SSD qué bloques ya no tienen datos útiles','Desfragmenta el disco duro','Sube las RPM','Limpia la caché L1'],e:'Así el SSD puede borrar esos bloques por adelantado y mantener la velocidad de escritura.'},
+  {q:'En un HDD, la misma pista en todos los platos forma un…',o:['Cilindro','Sector','Clúster','Partición'],e:'Leer un cilindro completo no requiere mover el brazo, solo cambiar de cabezal.'},
+  {q:'El tiempo que tarda el brazo en llegar a la pista correcta es el…',o:['Tiempo de búsqueda (seek)','Latencia rotacional','Tiempo de transferencia','Tiempo de refresco'],e:'Suele ser el componente más grande del tiempo de acceso de un HDD.'},
+  {q:'¿Qué mecanismo permite que el controlador copie datos a la RAM sin que la CPU mueva cada byte?',o:['DMA (acceso directo a memoria)','Polling','Paginación','TRIM'],e:'La CPU programa la transferencia y recibe una interrupción cuando termina.'},
+  {q:'Un disco gira a 7200 RPM. ¿Latencia rotacional media?',o:['≈ 4,17 ms','≈ 8,33 ms','≈ 0,12 ms','≈ 72 ms'],e:'Una vuelta = 60 000 ÷ 7200 = 8,33 ms; en promedio se espera media vuelta.'},
+  {q:'¿Cuál es un ejemplo típico de almacenamiento terciario?',o:['Biblioteca robótica de cintas magnéticas','SSD NVMe','Caché L3','RAM DDR5'],e:'Mucha capacidad, bajo costo por GB y acceso lento: ideal para respaldos y archivo.'},
+  {q:'¿Qué guarda normalmente la ROM/flash de la placa base?',o:['El firmware de arranque (BIOS/UEFI)','Los archivos del usuario','La memoria virtual','La caché de la CPU'],e:'Es no volátil: el código de arranque tiene que estar ahí al encender.'},
+  {q:'Unidad mínima que un disco lee o escribe físicamente (512 B o 4 KB):',o:['Sector','Clúster','Inodo','Cilindro'],e:'El sistema de archivos agrupa varios sectores en bloques o clústeres.'},
+  {q:'Una caché tuvo 80 accesos y 60 aciertos. ¿Tasa de aciertos?',o:['75 %','60 %','80 %','25 %'],e:'60 ÷ 80 = 0,75.'},
+  {q:'Acierto: 1 ns. Penalización por fallo: 100 ns. Tasa de fallos: 5 %. ¿Tiempo medio de acceso?',o:['6 ns','5 ns','100 ns','101 ns'],e:'T = 1 + 0,05 × 100 = 6 ns.'},
+  {q:'¿Qué disco óptico tiene más capacidad por capa?',o:['Blu-ray (≈ 25 GB)','DVD (≈ 4,7 GB)','CD (≈ 700 MB)','Todos igual'],e:'El láser azul-violeta tiene menor longitud de onda: marcas más pequeñas, más datos.'},
+  {q:'¿Qué permite la memoria virtual?',o:['Ejecutar programas más grandes que la RAM y aislar procesos','Hacer la RAM no volátil','Eliminar la caché','Aumentar las RPM del disco'],e:'Cada proceso ve su propio espacio de direcciones; el SO mapea páginas a marcos o al disco.'},
+];
+const TTIME=20;let T=null,TT=null;
+function tInit(){T={qs:shuffle(QS).slice(0,10).map(q=>({...q,opts:shuffle(q.o)})),i:0,correct:0,started:false}}
+function renderTrivia(){
+  if(!T)tInit();
+  view.innerHTML=frame(5,'Nivel 05 · Todo el tema','Trivia relámpago',
+    `10 preguntas de todo el tema, ${TTIME} segundos cada una. Respuesta correcta = 10 puntos + bonus por velocidad. Teclas 1–4 para responder.`,
+    `<div class="panel" id="tBox"></div>`);
+  drawTrivia();
+  if(T.started&&T.i<T.qs.length&&!T.answered)tTimer();
+}
+function drawTrivia(){
+  const box=$('#tBox');
+  if(!T.started){box.innerHTML=`<div class="kbox"><div class="kcard">10 preguntas · ${TTIME} s</div><br><button class="btn primary" id="tGo" style="font-size:18px;padding:14px 30px">¡Empezar trivia!</button></div>`;
+    $('#tGo').onclick=()=>{T.started=true;tStartQ()};return}
+  if(T.i>=T.qs.length){box.innerHTML=`<h3>Fin de la trivia</h3><div class="sum"><div class="stat"><b>${T.correct}/10</b><span>respuestas correctas entre todos</span></div></div>
+    <div class="actions"><button class="btn primary" id="tNew">Nueva trivia</button><a class="btn" href="#podio" style="text-decoration:none">Ver podio 🏆</a></div>`;
+    $('#tNew').onclick=()=>{tInit();renderTrivia()};return}
+  const q=T.qs[T.i],A=T.answered,right=q.o[0];
+  box.innerHTML=`<div class="thead"><span class="prog">Pregunta ${T.i+1} de 10 · responde <b style="color:${COLORS[A?T.who:S.active]}">${esc(teamName(A?T.who:S.active))}</b></span><span class="clock${T.left<=5?' low':''}" id="tClock">${Math.ceil(T.left)}</span></div>
+    <div class="tbar"><i id="tBar" style="width:${T.left/TTIME*100}%"></i></div>
+    <div class="tq">${q.q}</div>
+    <div class="opts">${q.opts.map((o,k)=>{let c='';if(A){if(o===right)c=' right';else if(k===T.pick)c=' wrong'}
+      return `<button class="opt${c}" data-k="${k}" ${A?'disabled':''}><span class="l">${k+1}</span>${o}</button>`}).join('')}</div>
+    ${A?`<div class="feed ${T.lastOk?'ok':'bad'}"><span class="tag">${T.lastOk?'¡CORRECTO!':T.pick<0?'¡SE ACABÓ EL TIEMPO!':'INCORRECTO'}</span>${q.e}<br>${ptsMsg(T.lastOk,T.lastPts,teamName(T.who))}${turnMsg()}</div>
+      <div class="actions"><button class="btn primary" id="tNext">${T.i===9?'Ver resultado':'Siguiente pregunta →'}</button></div>`:''}`;
+  if(!A)$$('#tBox .opt').forEach(b=>b.onclick=()=>tAnswer(+b.dataset.k));
+  else $('#tNext').onclick=()=>{T.i++;if(T.i<T.qs.length)tStartQ();else drawTrivia()};
+}
+function tStartQ(){T.left=TTIME;T.answered=false;T.pick=null;drawTrivia();tTimer()}
+function tTimer(){clearInterval(TT);TT=setInterval(()=>{if(T.answered){clearInterval(TT);return}T.left-=.1;
+  if(T.left<=0){T.left=0;tAnswer(-1);return}const c=$('#tClock'),b=$('#tBar');if(c){c.textContent=Math.ceil(T.left);c.classList.toggle('low',T.left<=5)}if(b)b.style.width=(T.left/TTIME*100)+'%'},100)}
+function tAnswer(k){
+  if(!T||T.answered)return;clearInterval(TT);T.answered=true;T.pick=k;T.who=S.active;
+  const q=T.qs[T.i],ok=k>=0&&q.opts[k]===q.o[0];let pts=0;
+  if(ok){pts=10+Math.ceil(T.left/2);award(pts);T.correct++}beep(ok);
+  T.lastOk=ok;T.lastPts=pts;endTurn();drawTrivia();
+}
+
+/* ================= Podio ================= */
+function renderPodio(){
+  const order=S.teams.map((t,i)=>({...t,i})).sort((a,b)=>b.score-a.score);
+  const max=Math.max(1,order[0].score);const top=[order[1],order[0],order[2]].filter(Boolean);
+  view.innerHTML=`<section style="--acc:var(--t2)"><a class="back" href="#inicio">← Volver a la pirámide</a><div class="ghead"><span class="kicker">Resultados</span><h1>Podio</h1></div>
+    <div class="podium">${top.map(t=>{const place=order.indexOf(t)+1;const h=[0,220,160,120][place];
+      return `<div class="pcol" style="--c:${COLORS[t.i]}"><div class="nm">${esc(t.name)}</div><div class="sc">${t.score}</div><div class="pblock" style="height:${h}px">${place}</div></div>`}).join('')}</div>
+    ${order.length>3?`<div class="rest">${order.slice(3).map((t,k)=>`<div><span>${k+4}. ${esc(t.name)}</span><b style="color:${COLORS[t.i]}">${t.score}</b></div>`).join('')}</div>`:''}
+    <div class="actions" style="justify-content:center;margin-top:24px"><button class="btn" id="zConf">🎉 Celebrar otra vez</button><button class="btn" id="zReset">Reiniciar puntajes</button></div></section>`;
+  $('#zConf').onclick=confetti;
+  $('#zReset').onclick=e=>{const b=e.currentTarget;if(b.dataset.c){S.teams.forEach(t=>t.score=0);S.active=0;save();renderTeams();renderPodio()}else{b.dataset.c=1;b.textContent='¿Seguro? Toca otra vez';b.style.borderColor='var(--bad)'}};
+  if(order[0].score>0)confetti();
+}
+function confetti(){
+  const cv=$('#confetti'),ctx=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;
+  const ps=Array.from({length:160},()=>({x:Math.random()*cv.width,y:-20-Math.random()*cv.height*.5,vx:(Math.random()-.5)*3,vy:2+Math.random()*4,s:5+Math.random()*7,r:Math.random()*6,c:pick(COLORS)}));
+  let f=0;(function loop(){ctx.clearRect(0,0,cv.width,cv.height);ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.r+=.1;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);ctx.restore()});
+    if(++f<240)requestAnimationFrame(loop);else ctx.clearRect(0,0,cv.width,cv.height)})();
+}
+
+/* ================= Configuración ================= */
+function openCfg(){
+  const m=$('#modal');m.classList.remove('hidden');
+  const draw=()=>{m.innerHTML=`<div class="mbox"><h2>Equipos</h2>
+    <div class="row"><span>Número de equipos</span><div class="cnt">${[2,3,4,5,6].map(n=>`<button class="${n===S.teams.length?'on':''}" data-n="${n}">${n}</button>`).join('')}</div></div>
+    ${S.teams.map((t,i)=>`<div class="field"><span class="dot" style="background:${COLORS[i]}"></span><input type="text" maxlength="24" data-i="${i}" value="${esc(t.name)}"></div>`).join('')}
+    <div class="row"><label class="sw"><input type="checkbox" id="cAuto" ${S.autoTurn?'checked':''}> Rotar el turno automáticamente después de cada pregunta</label></div>
+    <div class="row"><label class="sw"><input type="checkbox" id="cSnd" ${S.sound?'checked':''}> Sonidos</label></div>
+    <div class="actions" style="justify-content:flex-end"><button class="btn" id="cZero">Poner puntajes en 0</button><button class="btn primary" id="cOk" style="--acc:var(--t3)">Listo</button></div></div>`;
+    $$('.cnt button',m).forEach(b=>b.onclick=()=>{const n=+b.dataset.n;readNames();while(S.teams.length<n)S.teams.push({name:NAMES[S.teams.length],score:0});S.teams.length=n;if(S.active>=n)S.active=0;save();renderTeams();draw()});
+    $('#cAuto').onchange=e=>{S.autoTurn=e.target.checked;save()};
+    $('#cSnd').onchange=e=>{S.sound=e.target.checked;save()};
+    $('#cZero').onclick=e=>{const b=e.currentTarget;if(b.dataset.c){S.teams.forEach(t=>t.score=0);save();renderTeams();b.textContent='Listo ✓'}else{b.dataset.c=1;b.textContent='¿Seguro? Toca otra vez'}};
+    $('#cOk').onclick=closeModal;
+  };
+  const readNames=()=>$$('#modal input[type=text]').forEach(inp=>{const v=inp.value.trim();if(v)S.teams[+inp.dataset.i].name=v});
+  m.onclick=e=>{if(e.target===m)closeModal()};
+  m._read=readNames;draw();
+}
+function closeModal(){const m=$('#modal');if(m.classList.contains('hidden'))return;if(m._read)m._read();save();renderTeams();m.classList.add('hidden');
+  if((location.hash||'#inicio')==='#podio')renderPodio()}
+
+/* ================= Router ================= */
+const ROUTES={inicio:renderHome,piramide:renderPiramide,cache:renderCache,paginacion:renderPag,clasifica:renderClasifica,disco:renderDisco,trivia:renderTrivia,podio:renderPodio};
+function route(){
+  clearInterval(TT);
+  if(K.running){clearInterval(KT);K.running=false;K.done=true;endTurn()}
+  const h=(location.hash||'#inicio').slice(1);(ROUTES[h]||renderHome)();window.scrollTo(0,0);
+}
+$('#btnNext').onclick=nextTurn;
+$('#btnPodio').onclick=()=>{location.hash='#podio'};
+$('#btnCfg').onclick=openCfg;
+window.addEventListener('hashchange',route);
+renderTeams();route();
+</script>
+</body>
+</html>
